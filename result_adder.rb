@@ -1,3 +1,4 @@
+#!/usr/bin/env bundle exec ruby
 require 'optparse'
 require 'yaml'
 
