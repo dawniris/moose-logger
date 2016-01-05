@@ -26,7 +26,8 @@ create table test_result
   test_result_id INTEGER PRIMARY KEY ASC,
   status TEXT,
   elapsed_time REAL,
-  e TEXT,
+  exception_name TEXT,
+  exception_trace TEXT,
   test_id INTEGER,
   run_date DATETIME,
   FOREIGN KEY(test_id) REFERENCES test(test_id)
