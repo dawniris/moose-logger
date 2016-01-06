@@ -47,29 +47,29 @@ end
 def insert_to_db(run_date, suite, test_group, data_hash)
   data_hash[test_group].each_pair do |res_key, res_val|
     # make sure that we have an entry for this test
-    test_id = @db.execute("SELECT test_id FROM test WHERE name = \"#{res_key}\";")
+    test_id = @db.execute("SELECT test_id FROM tests WHERE name = \"#{res_key}\";")
     if test_id.kind_of?(Array) && !test_id.empty?
       test_id = test_id.first.first
     else
-      @db.execute("INSERT INTO test(name, description)
+      @db.execute("INSERT INTO tests(name, description)
                    VALUES (?,?)", [res_key, res_val["description"]])
       test_id = @db.last_insert_row_id
     end
     # make sure that we have an entry for this test_group
-    test_group_id = @db.execute("SELECT test_group_id from test_group WHERE name = \"#{test_group}\";")
+    test_group_id = @db.execute("SELECT test_group_id from test_groups WHERE name = \"#{test_group}\";")
     if test_group_id.kind_of?(Array) && !test_group_id.empty?
       test_group_id = test_group_id.first.first
     else
-      @db.execute("INSERT INTO test_group(name, test_id)
+      @db.execute("INSERT INTO test_groups(name, test_id)
                    VALUES (?,?)", [test_group, test_id])
       test_group_id = @db.last_insert_row_id
     end
     # make sure that we have an try for this suite
-    suite_id = @db.execute("SELECT suite_id FROM suite WHERE name = \"#{suite}\";")
+    suite_id = @db.execute("SELECT suite_id FROM suites WHERE name = \"#{suite}\";")
     if suite_id.kind_of?(Array) && !suite_id.empty?
       suite_id = suite_id.first.first
     else
-      @db.execute("INSERT INTO suite(name, test_group_id)
+      @db.execute("INSERT INTO suites(name, test_group_id)
                    VALUES (?,?)", [suite, test_group_id])
       suite_id = @db.last_insert_row_id
     end
@@ -83,19 +83,19 @@ def insert_to_db(run_date, suite, test_group, data_hash)
       exception_trace = exception[1].join('\n')
     end
     # if we've already seen a test run on this date then ignore this one
-    test_result_id = @db.execute("SELECT test_result_id FROM test_result WHERE test_id = #{test_id} AND run_date = \"#{run_date}\";")
+    test_result_id = @db.execute("SELECT test_result_id FROM test_results WHERE test_id = #{test_id} AND run_date = \"#{run_date}\";")
     if test_result_id.kind_of?(Array) && !test_result_id.empty?
-      puts "skipping duplicate #{run_date} result for #{suite} - #{test_group} - #{res_key}"
+      puts "    SKIP duplicate #{run_date} result for #{suite} - #{test_group} - #{res_key}"
       next
     end
-    puts "adding #{run_date} result for #{suite} - #{test_group} - #{res_key}"
-    @db.execute("INSERT INTO test_result(status, elapsed_time, exception_name, exception_trace, test_id, run_date)
+    puts "    ADD #{run_date} result for #{suite} - #{test_group} - #{res_key}"
+    @db.execute("INSERT INTO test_results(status, elapsed_time, exception_name, exception_trace, test_id, run_date)
                  VALUES (?,?,?,?,?,?)", [res_val[:status], res_val[:elapsed], exception_name, exception_trace, test_id, run_date])
   end
 end
 
 def process_file(f)
-  puts "processing file: \"#{f}\""
+  puts "FILE: \"#{f}\""
 
   suite = nil
   test_group = nil
@@ -125,8 +125,9 @@ def process_file(f)
       yaml_chunk = ""
       suite = m[1]
       test_group = m[2]
-      puts "aw yiss #{suite} - #{test_group}"
+      puts "  #{suite} - #{test_group}"
     else
+      # do a little line scrubbing
       yaml_chunk += line
     end
   end

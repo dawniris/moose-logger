@@ -1,11 +1,11 @@
-create table test
+create table tests
 (
   test_id INTEGER PRIMARY KEY ASC,
   name TEXT,
   description TEXT
 );
 
-create table test_group
+create table test_groups
 (
   test_group_id INTEGER PRIMARY KEY ASC,
   name TEXT,
@@ -13,7 +13,7 @@ create table test_group
   FOREIGN KEY(test_id) REFERENCES test(test_id)
 );
 
-create table suite
+create table suites
 (
   suite_id INTEGER PRIMARY KEY ASC,
   name TEXT,
@@ -21,7 +21,7 @@ create table suite
   FOREIGN KEY(test_group_id) REFERENCES test_group(test_group_id)
 );
 
-create table test_result
+create table test_results
 (
   test_result_id INTEGER PRIMARY KEY ASC,
   status TEXT,
