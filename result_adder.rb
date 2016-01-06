@@ -55,8 +55,8 @@ def insert_to_db(run_date, suite, test_group, data_hash)
                    VALUES (?,?)", [res_key, res_val["description"]])
       test_id = @db.last_insert_row_id
     end
-    # make sure that we have an entry for this test_group
-    test_group_id = @db.execute("SELECT test_group_id from test_groups WHERE name = \"#{test_group}\";")
+    # make sure that we have an entry for this test_group for this test_id
+    test_group_id = @db.execute("SELECT test_group_id from test_groups WHERE name = \"#{test_group}\" and test_id = #{test_id};")
     if test_group_id.kind_of?(Array) && !test_group_id.empty?
       test_group_id = test_group_id.first.first
     else
@@ -64,7 +64,7 @@ def insert_to_db(run_date, suite, test_group, data_hash)
                    VALUES (?,?)", [test_group, test_id])
       test_group_id = @db.last_insert_row_id
     end
-    # make sure that we have an try for this suite
+    # make sure that we have an entry for this suite
     suite_id = @db.execute("SELECT suite_id FROM suites WHERE name = \"#{suite}\";")
     if suite_id.kind_of?(Array) && !suite_id.empty?
       suite_id = suite_id.first.first
@@ -131,6 +131,14 @@ def process_file(f)
       yaml_chunk += line
     end
   end
+  # process last chunk, if it exists
+  # process a yaml_chunk if we have one
+  if !yaml_chunk.empty?
+    data_hash = YAML.load(yaml_chunk)
+    # insert data into database
+    insert_to_db(run_date, suite, test_group, data_hash)
+  end
+
 end
 
 optparse = options_parser
