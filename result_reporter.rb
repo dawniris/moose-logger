@@ -64,6 +64,7 @@ def fails_per_test_run(time_clause)
   query_str = "select test_results.run_date, count(tests.name), group_concat(distinct tests.name)
   from test_results,tests
   where tests.test_id = test_results.test_id
+  and test_results.status = \"FAIL\"
   %s
   group by test_results.run_date;
   order by test_result.run_date"
@@ -117,6 +118,7 @@ def tests_with_most_failures(time_clause)
   query_str = "select count(*) as num, name
   from test_results, tests
   where test_results.test_id = tests.test_id
+  and test_results.status = \"FAIL\"
   %s
   group by tests.test_id
   order by num DESC
@@ -139,6 +141,7 @@ def test_groups_ordered_by_failures(time_clause)
   from test_groups, tests, test_results
   where test_groups.test_id = tests.test_id
   and test_results.test_id = tests.test_id
+  and test_results.status = \"FAIL\"
   %s
   group by test_groups.name
   order by num DESC;"
