@@ -153,7 +153,33 @@ def greatest_avg_test_execution_time(time_clause)
   formatted_res += "  |  #{"Avg Excluding Max Execution time (s)".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Test Name".ljust(JUST)}|\n"
   formatted_res += TABLE_LINE
   res.each do |row|
-    formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
+    formatted_res += "  |  #{row[0].to_f.round(2).to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
+    formatted_res += TABLE_LINE
+  end
+  formatted_res
+end
+
+def avg_failures_per_test_group(time_clause)
+  query_str = "select avg(fail_count) as num, test_group_name
+  from ( select count(*) as fail_count, test_groups.name as test_group_name
+    from tests, test_groups, test_results 
+    where test_groups.test_id = tests.test_id
+    and test_results.test_id = tests.test_id
+    and test_results.status = \"FAIL\"
+    %s
+    group by test_groups.name, test_results.run_date
+       )
+  group by test_group_name
+  order by num DESC;
+  "
+  res = @db.execute(query_str % time_clause)
+  formatted_res = ""
+  formatted_res +=  SEPERATOR
+  formatted_res += "\nAverage Failures per Test Group\n"
+  formatted_res += "  |  #{"Avg Number of Failures".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Test Group Name".ljust(JUST)}|\n"
+  formatted_res += TABLE_LINE
+  res.each do |row|
+    formatted_res += "  |  #{row[0].to_f.round(2).to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
     formatted_res += TABLE_LINE
   end
   formatted_res
@@ -172,7 +198,7 @@ def test_groups_ordered_by_failures(time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
   formatted_res += "\nTests Groups with most failures\n"
-  formatted_res += "  |  #{"Number of Failures".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Test Group Name".ljust(JUST)}|\n"
+  formatted_res += "  |  #{"Sum Total Number of Failures".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Test Group Name".ljust(JUST)}|\n"
   formatted_res += TABLE_LINE
   res.each do |row|
     formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
@@ -204,7 +230,9 @@ def collect_from_db(days_back, latest)
   #res += most_frequent_exception_traces(time_clause)
   res += tests_with_most_failures(time_clause)
   res += greatest_avg_test_execution_time(time_clause)
-  res += test_groups_ordered_by_failures(time_clause)
+  res += avg_failures_per_test_group(time_clause)
+  # NOTE - disabled for now, not sure of value of this data
+  #res += test_groups_ordered_by_failures(time_clause)
   res
 end
 
