@@ -76,10 +76,11 @@ def fails_per_test_run(time_clause)
   formatted_res += TABLE_LINE
   res.each do |row|
     formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
-    formatted_res += "  |    Failed tests: \n"
-    row[2].split(',').each do |tn|
-      formatted_res += "  |      #{tn.to_s.ljust(JUST-4)}\n"
-    end
+    # NOTE - disabled full listing for now, makes tables hard to read
+    #formatted_res += "  |    Failed tests: \n"
+    #row[2].split(',').each do |tn|
+    #  formatted_res += "  |      #{tn.to_s.ljust(JUST-4)}\n"
+    #end
     formatted_res += TABLE_LINE
   end
   formatted_res
@@ -136,6 +137,28 @@ def tests_with_most_failures(time_clause)
   formatted_res
 end
 
+def greatest_avg_test_execution_time(time_clause)
+  query_str = "select avg(test_results.elapsed_time) as num, tests.name
+  from test_results, tests 
+  where tests.test_id = test_results.test_id  
+  %s
+  and test_results.elapsed_time != (select max(tr_inner.elapsed_time) from test_results tr_inner where test_results.test_id = tr_inner.test_id group by tr_inner.test_id)
+  group by test_results.test_id 
+  order by num DESC 
+  limit 10;"
+  res = @db.execute(query_str % time_clause)
+  formatted_res = ""
+  formatted_res +=  SEPERATOR
+  formatted_res += "\nTests with greatest execution time\n"
+  formatted_res += "  |  #{"Avg Excluding Max Execution time (s)".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Test Name".ljust(JUST)}|\n"
+  formatted_res += TABLE_LINE
+  res.each do |row|
+    formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
+    formatted_res += TABLE_LINE
+  end
+  formatted_res
+end
+
 def test_groups_ordered_by_failures(time_clause)
   query_str = "select count(*) as num, test_groups.name
   from test_groups, tests, test_results
@@ -177,8 +200,10 @@ def collect_from_db(days_back, latest)
   end
   res += number_of_test_runs(time_clause)
   res += fails_per_test_run(time_clause)
-  res += most_frequent_exception_traces(time_clause)
+  # NOTE - disabled for now, not sure of value of this data
+  #res += most_frequent_exception_traces(time_clause)
   res += tests_with_most_failures(time_clause)
+  res += greatest_avg_test_execution_time(time_clause)
   res += test_groups_ordered_by_failures(time_clause)
   res
 end
