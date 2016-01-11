@@ -2,6 +2,7 @@
 require 'optparse'
 require 'sqlite3'
 
+STATUS=['PASS', 'FAIL', 'INCOMPLETE', 'SKIPPED']
 DEFAULT_OPTIONS={
   :help      => false,
   :days_back => nil,
@@ -11,6 +12,7 @@ DEFAULT_OPTIONS={
 SEPERATOR="**************************************************************************"
 TABLE_SEPERATOR="        "
 JUST=40
+SJUST=10
 TABLE_LINE="   ----------------------------------------------------------------------------------------------\n"
 @options=DEFAULT_OPTIONS
 @db=nil
@@ -60,27 +62,24 @@ def number_of_test_runs(time_clause)
   formatted_res
 end
 
-def fails_per_test_run(time_clause)
-  query_str = "select test_results.run_date, count(tests.name), group_concat(distinct tests.name)
-  from test_results,tests
-  where tests.test_id = test_results.test_id
-  and test_results.status = \"FAIL\"
+def status_per_test_run(time_clause)
+  query_str = "select test_results.run_date, #{STATUS.map{ |s| "count(CASE WHEN status = '#{s}' THEN 1 ELSE NULL END)"}.join(', ')}
+  from test_results
+  where test_results.test_result_id >= 0
   %s
-  group by test_results.run_date;
-  order by test_result.run_date"
+  group by test_results.run_date
+  order by test_results.run_date;"
   res = @db.execute(query_str % time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
-  formatted_res += "\nFailures per test run\n"
-  formatted_res += "  |  #{"Date".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Fails".ljust(JUST)}|\n"
+  formatted_res += "\nResults per test run\n"
+  formatted_res += "  |  #{"Date".ljust(JUST)}|#{STATUS.map{ |s| "  #{s.ljust(SJUST)}|"}.join('')}"
+  formatted_res += "\n"
   formatted_res += TABLE_LINE
   res.each do |row|
-    formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
-    # NOTE - disabled full listing for now, makes tables hard to read
-    #formatted_res += "  |    Failed tests: \n"
-    #row[2].split(',').each do |tn|
-    #  formatted_res += "  |      #{tn.to_s.ljust(JUST-4)}\n"
-    #end
+    formatted_res += "  |  #{row[0].ljust(JUST)}|"
+    formatted_res += row[1..-1].map{ |val| "  #{val.to_s.ljust(SJUST)}" }.join("|")
+    formatted_res += "|\n"
     formatted_res += TABLE_LINE
   end
   formatted_res
@@ -159,13 +158,13 @@ def greatest_avg_test_execution_time(time_clause)
   formatted_res
 end
 
-def avg_failures_per_test_group(time_clause)
+def avg_status_per_test_group(status, time_clause)
   query_str = "select avg(fail_count) as num, test_group_name
   from ( select count(*) as fail_count, test_groups.name as test_group_name
     from tests, test_groups, test_results 
     where test_groups.test_id = tests.test_id
     and test_results.test_id = tests.test_id
-    and test_results.status = \"FAIL\"
+    and test_results.status = \"#{status}\"
     %s
     group by test_groups.name, test_results.run_date
        )
@@ -175,8 +174,8 @@ def avg_failures_per_test_group(time_clause)
   res = @db.execute(query_str % time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
-  formatted_res += "\nAverage Failures per Test Group\n"
-  formatted_res += "  |  #{"Avg Number of Failures".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Test Group Name".ljust(JUST)}|\n"
+  formatted_res += "\nAverage Number of Status '#{status}'(s) per Test Group\n"
+  formatted_res += "  |  #{"Avg Number of '#{status}'(s)".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Test Group Name".ljust(JUST)}|\n"
   formatted_res += TABLE_LINE
   res.each do |row|
     formatted_res += "  |  #{row[0].to_f.round(2).to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
@@ -225,12 +224,12 @@ def collect_from_db(days_back, latest)
     time_clause = "and test_results.run_date = \"#{max_run_date}\""
   end
   res += number_of_test_runs(time_clause)
-  res += fails_per_test_run(time_clause)
+  res += status_per_test_run(time_clause)
   # NOTE - disabled for now, not sure of value of this data
   #res += most_frequent_exception_traces(time_clause)
   res += tests_with_most_failures(time_clause)
   res += greatest_avg_test_execution_time(time_clause)
-  res += avg_failures_per_test_group(time_clause)
+  res += avg_status_per_test_group('FAIL', time_clause)
   # NOTE - disabled for now, not sure of value of this data
   #res += test_groups_ordered_by_failures(time_clause)
   res
