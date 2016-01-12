@@ -63,7 +63,7 @@ def number_of_test_runs(time_clause)
 end
 
 def status_per_test_run(time_clause)
-  query_str = "select test_results.run_date, #{STATUS.map{ |s| "count(CASE WHEN status = '#{s}' THEN 1 ELSE NULL END)"}.join(', ')}
+  query_str = "select test_results.run_date, count(*), #{STATUS.map{ |s| "count(CASE WHEN status = '#{s}' THEN 1 ELSE NULL END)"}.join(', ')}
   from test_results
   where test_results.test_result_id >= 0
   %s
@@ -73,12 +73,12 @@ def status_per_test_run(time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
   formatted_res += "\nResults per test run\n"
-  formatted_res += "  |  #{"Date".ljust(JUST)}|#{STATUS.map{ |s| "  #{s.ljust(SJUST)}|"}.join('')}"
+  formatted_res += "  |  #{"Date".ljust(JUST)}|  #{"Total".ljust(SJUST)}|#{STATUS.map{ |s| "  #{s.ljust(SJUST)}|"}.join('')}"
   formatted_res += "\n"
   formatted_res += TABLE_LINE
   res.each do |row|
-    formatted_res += "  |  #{row[0].ljust(JUST)}|"
-    formatted_res += row[1..-1].map{ |val| "  #{val.to_s.ljust(SJUST)}" }.join("|")
+    formatted_res += "  |  #{row[0].ljust(JUST)}|  #{row[1].to_s.ljust(SJUST)}|"
+    formatted_res += row[2..-1].map{ |val| "  #{val.to_s.ljust(SJUST)}" }.join("|")
     formatted_res += "|\n"
     formatted_res += TABLE_LINE
   end
