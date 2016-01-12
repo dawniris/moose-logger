@@ -65,7 +65,7 @@ def insert_to_db(run_date, suite, test_group, data_hash)
       test_group_id = @db.last_insert_row_id
     end
     # make sure that we have an entry for this suite
-    suite_id = @db.execute("SELECT suite_id FROM suites WHERE name = \"#{suite}\";")
+    suite_id = @db.execute("SELECT suite_id FROM suites WHERE name = \"#{suite}\" and test_group_id = #{test_group_id};")
     if suite_id.kind_of?(Array) && !suite_id.empty?
       suite_id = suite_id.first.first
     else

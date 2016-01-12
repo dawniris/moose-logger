@@ -11,9 +11,8 @@ DEFAULT_OPTIONS={
 }
 SEPERATOR="**************************************************************************"
 TABLE_SEPERATOR="        "
-JUST=40
-SJUST=10
-TABLE_LINE="   ----------------------------------------------------------------------------------------------\n"
+JUST=50
+SJUST=12
 @options=DEFAULT_OPTIONS
 @db=nil
 
@@ -73,14 +72,15 @@ def status_per_test_run(time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
   formatted_res += "\nResults per test run\n"
-  formatted_res += "  |  #{"Date".ljust(JUST)}|  #{"Total".ljust(SJUST)}|#{STATUS.map{ |s| "  #{s.ljust(SJUST)}|"}.join('')}"
-  formatted_res += "\n"
-  formatted_res += TABLE_LINE
+  header = "  |  #{"Date".ljust(JUST)}|  #{"Total".ljust(SJUST)}|#{STATUS.map{ |s| "  #{s.ljust(SJUST)}|"}.join('')}\n"
+  formatted_res += header
+  table_line = "  " + "-"*(header.length-3) + "\n"
+  formatted_res += table_line
   res.each do |row|
     formatted_res += "  |  #{row[0].ljust(JUST)}|  #{row[1].to_s.ljust(SJUST)}|"
     formatted_res += row[2..-1].map{ |val| "  #{val.to_s.ljust(SJUST)}" }.join("|")
     formatted_res += "|\n"
-    formatted_res += TABLE_LINE
+    formatted_res += table_line
   end
   formatted_res
 end
@@ -98,8 +98,10 @@ def most_frequent_exception_traces(time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
   formatted_res += "\nMost frequent exception traces\n"
-  formatted_res += "  |  #{"Occurences".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Tests".ljust(JUST)}|\n"
-  formatted_res += TABLE_LINE
+  header = "  |  #{"Occurences".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Tests".ljust(JUST)}|\n"
+  formatted_res += header
+  table_line = "  " + "-"*(header.length-3) + "\n"
+  formatted_res += table_line
   res.each do |row|
     formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Observed in:".ljust(JUST)}|\n"
     row[2].split(',').each do |tn|
@@ -109,37 +111,43 @@ def most_frequent_exception_traces(time_clause)
     row[1].split("\\n").each do |tline|
       formatted_res += "  |      #{tline.to_s.ljust(JUST-4)}\n"
     end
-    formatted_res += TABLE_LINE
+    formatted_res += table_line
   end
   formatted_res
 end
 
 def tests_with_most_failures(time_clause)
-  query_str = "select count(*) as num, name
-  from test_results, tests
+  query_str = "select count(*) as num, suites.name, test_groups.name, tests.name
+  from test_results, tests, test_groups, suites
   where test_results.test_id = tests.test_id
+  and test_groups.test_id = tests.test_id
+  and suites.test_group_id = test_groups.test_group_id
   and test_results.status = \"FAIL\"
   %s
   group by tests.test_id
   order by num DESC
-  limit 5;"
+  limit 10;"
   res = @db.execute(query_str % time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
   formatted_res += "\nTests with most failures\n"
-  formatted_res += "  |  #{"Number of failures".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Test Name".ljust(JUST)}|\n"
-  formatted_res += TABLE_LINE
+  header = "  |  #{"Fails".ljust(SJUST)}|  #{"Suite".ljust(SJUST)}|  #{"Group".ljust(JUST)}|  #{"Test Name".ljust(JUST)}|\n"
+  formatted_res += header
+  table_line = "  " + "-"*(header.length-3) + "\n"
+  formatted_res += table_line
   res.each do |row|
-    formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
-    formatted_res += TABLE_LINE
+    formatted_res += "  |  #{row[0].to_s.ljust(SJUST)}|  #{row[1].to_s.ljust(SJUST)}|  #{row[2].to_s.ljust(JUST)}|  #{row[3].to_s.ljust(JUST)}|\n"
+    formatted_res += table_line
   end
   formatted_res
 end
 
 def greatest_avg_test_execution_time(time_clause)
-  query_str = "select avg(test_results.elapsed_time) as num, tests.name
-  from test_results, tests 
+  query_str = "select avg(test_results.elapsed_time) as num, suites.name, test_groups.name, tests.name
+  from test_results, tests, test_groups, suites
   where tests.test_id = test_results.test_id  
+  and suites.test_group_id = test_groups.test_group_id
+  and test_groups.test_id = tests.test_id
   %s
   and test_results.elapsed_time != (select max(tr_inner.elapsed_time) from test_results tr_inner where test_results.test_id = tr_inner.test_id group by tr_inner.test_id)
   group by test_results.test_id 
@@ -148,21 +156,24 @@ def greatest_avg_test_execution_time(time_clause)
   res = @db.execute(query_str % time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
-  formatted_res += "\nTests with greatest execution time\n"
-  formatted_res += "  |  #{"Avg Excluding Max Execution time (s)".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Test Name".ljust(JUST)}|\n"
-  formatted_res += TABLE_LINE
+  formatted_res += "\nTests with greatest execution time - Average Excluding Max\n"
+  header = "  |  #{"Avg (s)".ljust(SJUST)}|  #{"Suite".ljust(SJUST)}|  #{"Group".ljust(JUST)}|  #{"Test Name".ljust(JUST)}|\n"
+  formatted_res += header
+  table_line = "  " + "-"*(header.length-3) + "\n"
+  formatted_res += table_line
   res.each do |row|
-    formatted_res += "  |  #{row[0].to_f.round(2).to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
-    formatted_res += TABLE_LINE
+    formatted_res += "  |  #{row[0].to_f.round(2).to_s.ljust(SJUST)}|  #{row[1].ljust(SJUST)}|  #{row[2].ljust(JUST)}|  #{row[3].to_s.ljust(JUST)}|\n"
+    formatted_res += table_line
   end
   formatted_res
 end
 
 def avg_status_per_test_group(status, time_clause)
-  query_str = "select avg(fail_count) as num, test_group_name
-  from ( select count(*) as fail_count, test_groups.name as test_group_name
-    from tests, test_groups, test_results 
+  query_str = "select avg(fail_count) as num, suite_name, test_group_name
+  from ( select count(*) as fail_count, test_groups.name as test_group_name, suites.name as suite_name
+    from tests, test_groups, test_results, suites
     where test_groups.test_id = tests.test_id
+    and suites.test_group_id = test_groups.test_group_id
     and test_results.test_id = tests.test_id
     and test_results.status = \"#{status}\"
     %s
@@ -175,33 +186,13 @@ def avg_status_per_test_group(status, time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
   formatted_res += "\nAverage Number of Status '#{status}'(s) per Test Group\n"
-  formatted_res += "  |  #{"Avg Number of '#{status}'(s)".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Test Group Name".ljust(JUST)}|\n"
-  formatted_res += TABLE_LINE
+  header = "  |  #{"Avg".ljust(SJUST)}|  #{"Suite".ljust(SJUST)}|  #{"Test Group Name".ljust(JUST)}|\n"
+  formatted_res += header
+  table_line = "  " + "-"*(header.length-3) + "\n"
+  formatted_res += table_line
   res.each do |row|
-    formatted_res += "  |  #{row[0].to_f.round(2).to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
-    formatted_res += TABLE_LINE
-  end
-  formatted_res
-end
-
-def test_groups_ordered_by_failures(time_clause)
-  query_str = "select count(*) as num, test_groups.name
-  from test_groups, tests, test_results
-  where test_groups.test_id = tests.test_id
-  and test_results.test_id = tests.test_id
-  and test_results.status = \"FAIL\"
-  %s
-  group by test_groups.name
-  order by num DESC;"
-  res = @db.execute(query_str % time_clause)
-  formatted_res = ""
-  formatted_res +=  SEPERATOR
-  formatted_res += "\nTests Groups with most failures\n"
-  formatted_res += "  |  #{"Sum Total Number of Failures".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Test Group Name".ljust(JUST)}|\n"
-  formatted_res += TABLE_LINE
-  res.each do |row|
-    formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(JUST)}|\n"
-    formatted_res += TABLE_LINE
+    formatted_res += "  |  #{row[0].to_f.round(2).to_s.ljust(SJUST)}|  #{row[1].to_s.ljust(SJUST)}|  #{row[2].to_s.ljust(JUST)}|\n"
+    formatted_res += table_line
   end
   formatted_res
 end
@@ -230,8 +221,6 @@ def collect_from_db(days_back, latest)
   res += tests_with_most_failures(time_clause)
   res += greatest_avg_test_execution_time(time_clause)
   res += avg_status_per_test_group('FAIL', time_clause)
-  # NOTE - disabled for now, not sure of value of this data
-  #res += test_groups_ordered_by_failures(time_clause)
   res
 end
 
