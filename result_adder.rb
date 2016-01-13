@@ -105,7 +105,7 @@ def process_file(f)
   run_date = "#{m[1]} #{m[2]}:00"
   File.foreach( f ) do |line|
     # garbage line, throw it away
-    if line =~ /^(=======================)|(---)|(--- {})|(%.*%)$/
+    if line =~ /^(=======================)|(---)|(--- {})|(%.*%)|(\.\.\.)$/
       next
     end
     # empty line, throw it away
