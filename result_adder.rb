@@ -117,7 +117,13 @@ def process_file(f)
     if !m.nil?
       # process a yaml_chunk if we have one
       if !yaml_chunk.empty?
-        data_hash = YAML.load(yaml_chunk)
+        begin
+          data_hash = YAML.load(yaml_chunk)
+        rescue => e
+          puts "Failed to convert yaml string to hash"
+          puts yaml_chunk
+          raise e
+        end
         # insert data into database
         insert_to_db(run_date, suite, test_group, data_hash)
       end

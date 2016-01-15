@@ -142,6 +142,41 @@ def tests_with_most_failures(time_clause)
   formatted_res
 end
 
+def tests_that_always_fail(time_clause)
+  query_str = "select count(distinct(run_date)) as num
+  from test_results
+  where test_results.test_id >= 0
+  %s;"
+  res = @db.execute(query_str % time_clause)
+  runs = res.first.first
+  query_str = "select num, suite_name, test_group_name, test_name from
+    (select count(*) as num, suites.name as suite_name, test_groups.name as test_group_name, tests.name as test_name
+    from test_results, tests, test_groups, suites
+    where test_results.test_id = tests.test_id
+    and test_groups.test_id = tests.test_id
+    and suites.test_group_id = test_groups.test_group_id
+    and test_results.status = \"FAIL\"
+    %s
+    group by tests.test_id
+    order by num DESC)
+    where num >= #{runs};
+  ;"
+  res = @db.execute(query_str % time_clause)
+  formatted_res = ""
+  formatted_res +=  SEPERATOR
+  formatted_res += "\nTests that only FAILed in selected time range\n"
+  header = "  |  #{"Fails".ljust(SJUST)}|  #{"Suite".ljust(SJUST)}|  #{"Group".ljust(JUST)}|  #{"Test Name".ljust(JUST)}|\n"
+  formatted_res += header
+  table_line = "  " + "-"*(header.length-3) + "\n"
+  formatted_res += table_line
+  res.each do |row|
+    formatted_res += "  |  #{row[0].to_s.ljust(SJUST)}|  #{row[1].to_s.ljust(SJUST)}|  #{row[2].to_s.ljust(JUST)}|  #{row[3].to_s.ljust(JUST)}|\n"
+    formatted_res += table_line
+  end
+  formatted_res
+
+end
+
 def greatest_avg_test_execution_time(time_clause)
   query_str = "select avg(test_results.elapsed_time) as num, suites.name, test_groups.name, tests.name
   from test_results, tests, test_groups, suites
@@ -219,6 +254,7 @@ def collect_from_db(days_back, latest)
   # NOTE - disabled for now, not sure of value of this data
   #res += most_frequent_exception_traces(time_clause)
   res += tests_with_most_failures(time_clause)
+  res += tests_that_always_fail(time_clause)
   res += greatest_avg_test_execution_time(time_clause)
   res += avg_status_per_test_group('FAIL', time_clause)
   res
