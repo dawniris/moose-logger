@@ -85,37 +85,31 @@ def status_per_test_run(time_clause)
   formatted_res
 end
 
-def number_pipeline_login_failures_per_run(time_clause)
-  query_str = "select run_date, count(*), count( case when exception_trace like \"%%pipeline_login_page%%\" then 1 else null end)
-  from test_results 
-  where exception_trace != \"\"
-  %s
-  group by test_results.run_date
-  order by test_results.run_date;"
-  res = @db.execute(query_str % time_clause)
-  formatted_res = ""
-  formatted_res +=  SEPERATOR
-  formatted_res += "\nNumber of pipeline_login_page exceptions\n"
-  header = "  |  #{"Date".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"# Exceptions".ljust(SJUST)}| #{"# login".ljust(SJUST)}|\n"
-  formatted_res += header
-  table_line = "  " + "-"*(header.length-3) + "\n"
-  formatted_res += table_line
-  res.each do |row|
-    formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{row[1].to_s.ljust(SJUST)}|  #{row[2].to_s.ljust(SJUST)}|\n"
-    formatted_res += table_line
+# find the index of the nth occurence of the given character in the given string
+def nthoccurence str, char, nth
+  res = str.length
+  nth = nth - 1
+  chunks = str.split(char)
+  if !(chunks.length == 1)
+    res = chunks[nth..-1].join(char).index(char) + chunks[0..nth-1].join(char).length + 1
   end
-  formatted_res
+  res
 end
 
 def most_frequent_exception_traces(time_clause)
-  query_str = "select count(*) as num, exception_trace, group_concat(distinct tests.name)
+  # helper function!
+  @db.create_function "nthoccurence", 3 do |func, a, b, c|
+    func.result = nthoccurence(a, b, c)
+  end
+
+  query_str = "select count(*) as num, group_concat(distinct tests.name), substr(exception_trace, 1, nthoccurence(exception_trace, \"\\n\", 8) + 1) as top_of_trace
   from test_results, tests
-  where test_results.exception_trace != \"\"
-  and tests.test_id = test_results.test_id
+  where tests.test_id = test_results.test_id
+  and exception_trace != ''
   %s
-  group by exception_trace
+  group by top_of_trace
   order by num DESC
-  limit 5;"
+  limit 10;"
   res = @db.execute(query_str % time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
@@ -125,12 +119,12 @@ def most_frequent_exception_traces(time_clause)
   table_line = "  " + "-"*(header.length-3) + "\n"
   formatted_res += table_line
   res.each do |row|
-    formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Observed in:".ljust(JUST)}|\n"
-    row[2].split(',').each do |tn|
-      formatted_res += "  |  #{" ".ljust(JUST)}#{TABLE_SEPERATOR}|   #{tn.ljust(JUST-1)}|\n"
+    formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{"".ljust(JUST)}|\n"
+    row[1].split(",").each do |tline|
+      formatted_res += "  |  #{"".ljust(JUST)}#{TABLE_SEPERATOR}|      #{tline.to_s.ljust(JUST-4)}\n"
     end
     formatted_res += "  |    Trace: \n"
-    row[1].split("\\n").each do |tline|
+    row[2].split("\\n").each do |tline|
       formatted_res += "  |      #{tline.to_s.ljust(JUST-4)}\n"
     end
     formatted_res += table_line
@@ -272,10 +266,8 @@ def collect_from_db(days_back, latest)
     time_clause = "and test_results.run_date = \"#{max_run_date}\""
   end
   res += number_of_test_runs(time_clause)
-  res += number_pipeline_login_failures_per_run(time_clause)
   res += status_per_test_run(time_clause)
-  # NOTE - disabled for now, not sure of value of this data
-  #res += most_frequent_exception_traces(time_clause)
+  res += most_frequent_exception_traces(time_clause)
   res += tests_with_most_failures(time_clause)
   res += tests_that_always_fail(time_clause)
   res += greatest_avg_test_execution_time(time_clause)
