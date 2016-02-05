@@ -96,6 +96,36 @@ def nthoccurence str, char, nth
   res
 end
 
+def most_frequent_exception_names(time_clause)
+  query_str = "select count(*) as num, group_concat(distinct tests.name), exception_name
+  from test_results, tests
+  where tests.test_id = test_results.test_id
+  and exception_trace != ''
+  %s
+  group by exception_name
+  order by num DESC
+  limit 10;"
+  res = @db.execute(query_str % time_clause)
+  formatted_res = ""
+  formatted_res +=  SEPERATOR
+  formatted_res += "\nMost frequent exception names\n"
+  header = "  |  #{"Occurences".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Tests".ljust(JUST)}|\n"
+  formatted_res += header
+  table_line = "  " + "-"*(header.length-3) + "\n"
+  formatted_res += table_line
+  res.each do |row|
+    formatted_res += "  |  #{row[0].to_s.ljust(JUST)}#{TABLE_SEPERATOR}|  #{"".ljust(JUST)}|\n"
+    row[1].split(",").each do |tline|
+      formatted_res += "  |  #{"".ljust(JUST)}#{TABLE_SEPERATOR}|      #{tline.to_s.ljust(JUST-4)}\n"
+    end
+    formatted_res += "  |    Name: \n"
+    formatted_res += "  |      #{row[2].to_s.ljust(JUST-4)}\n"
+    formatted_res += table_line
+  end
+  formatted_res
+
+end
+
 def most_frequent_exception_traces(time_clause)
   # helper function!
   @db.create_function "nthoccurence", 3 do |func, a, b, c|
@@ -267,6 +297,7 @@ def collect_from_db(days_back, latest)
   end
   res += number_of_test_runs(time_clause)
   res += status_per_test_run(time_clause)
+  res += most_frequent_exception_names(time_clause)
   res += most_frequent_exception_traces(time_clause)
   res += tests_with_most_failures(time_clause)
   res += tests_that_always_fail(time_clause)
