@@ -40,10 +40,14 @@ def process_file(f)
   run_date = "#{m[1]} #{m[2]}:00"
   File.foreach( f ) do |line|
     # garbage line, throw it away
-    if line =~ /^(=======================)|(---)|(--- {})|(%.*%)|(\.\.\.)$/
+    if line =~ /^(=======================)|(---)|(--- {})|(\.\.\.)$/
+      puts "REJECTING: #{line}"
       next
     end
-    # empty line, throw it away
+    if line =~ /(snapshots.zip)|(Scan and download)|(Automoose)|(Renew Financial Mail)|(^TOTAL )|(^SLOWEST GROUP)/
+      puts "REJECTING: #{line}"
+      next
+    end
     if line =~ /^$/
       next
     end
@@ -76,6 +80,7 @@ def process_file(f)
   # process last chunk, if it exists
   # process a yaml_chunk if we have one
   if !yaml_chunk.empty?
+    puts "last chunk is \"#{yaml_chunk}\""
     data_hash = YAML.load(yaml_chunk)
     full_hash[suite] ||= {}
     full_hash[suite] = full_hash[suite].merge(data_hash)

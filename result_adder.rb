@@ -105,10 +105,14 @@ def process_file(f)
   run_date = "#{m[1]} #{m[2]}:00"
   File.foreach( f ) do |line|
     # garbage line, throw it away
-    if line =~ /^(=======================)|(---)|(--- {})|(%.*%)|(\.\.\.)$/
+    if line =~ /^(=======================)|(---)|(--- {})|(\.\.\.)$/
+      puts "REJECTING: #{line}"
       next
     end
-    # empty line, throw it away
+    if line =~ /(snapshots.zip)|(Scan and download)|(Automoose)|(Renew Financial Mail)|(^TOTAL )|(^SLOWEST GROUP)/
+      puts "REJECTING: #{line}"
+      next
+    end
     if line =~ /^$/
       next
     end
