@@ -44,7 +44,7 @@ def process_file(f)
       puts "REJECTING: #{line}"
       next
     end
-    if line =~ /(snapshots.zip)|(Scan and download)|(Automoose)|(Renew Financial Mail)|(^TOTAL )|(^SLOWEST GROUP)/
+    if line =~ /(snapshots.zip)|(Download)|(Scan and download)|(Automoose)|(Renew Financial Mail)|(^TOTAL )|(^SLOWEST GROUP)/
       puts "REJECTING: #{line}"
       next
     end
@@ -80,8 +80,13 @@ def process_file(f)
   # process last chunk, if it exists
   # process a yaml_chunk if we have one
   if !yaml_chunk.empty?
-    puts "last chunk is \"#{yaml_chunk}\""
-    data_hash = YAML.load(yaml_chunk)
+    begin
+      data_hash = YAML.load(yaml_chunk)
+    rescue => e
+      puts "Failed to convert final yaml string to hash"
+      puts yaml_chunk
+      raise e
+    end
     full_hash[suite] ||= {}
     full_hash[suite] = full_hash[suite].merge(data_hash)
   end
