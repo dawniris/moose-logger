@@ -2,6 +2,7 @@
 require 'optparse'
 require 'yaml'
 require 'sqlite3'
+require 'pry'
 
 DEFAULT_OPTIONS={
   :help  => false,
@@ -109,7 +110,7 @@ def process_file(f)
       puts "REJECTING: #{line}"
       next
     end
-    if line =~ /(snapshots.zip)|(Download)|(Scan and download)|(Automoose)|(Renew Financial Mail)|(^TOTAL )|(^SLOWEST GROUP)/
+    if line =~ /(snapshots.zip)|(Download)|(Scan and download)|(Automoose)|(Renew Financial Mail)|(^TOTAL )|(^SLOWEST GROUP)|(1 message)/
       puts "REJECTING: #{line}"
       next
     end
