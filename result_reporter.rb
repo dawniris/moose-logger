@@ -85,8 +85,8 @@ def status_per_test_run(time_clause)
   formatted_res
 end
 
-# find the index of the nth occurence of the given character in the given string
-def nthoccurence str, char, nth
+# find the index of the nth occurrence of the given character in the given string
+def nthoccurrence str, char, nth
   res = str.length
   nth = nth - 1
   chunks = str.split(char)
@@ -109,7 +109,7 @@ def most_frequent_exception_names(time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
   formatted_res += "\nMost frequent exception names\n"
-  header = "  |  #{"Occurences".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Tests".ljust(JUST)}|\n"
+  header = "  |  #{"Occurrences".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Tests".ljust(JUST)}|\n"
   formatted_res += header
   table_line = "  " + "-"*(header.length-3) + "\n"
   formatted_res += table_line
@@ -128,11 +128,11 @@ end
 
 def most_frequent_exception_traces(time_clause)
   # helper function!
-  @db.create_function "nthoccurence", 3 do |func, a, b, c|
-    func.result = nthoccurence(a, b, c)
+  @db.create_function "nthoccurrence", 3 do |func, a, b, c|
+    func.result = nthoccurrence(a, b, c)
   end
 
-  query_str = "select count(*) as num, group_concat(distinct tests.name), substr(exception_trace, 1, nthoccurence(exception_trace, \"\\n\", 8) + 1) as top_of_trace
+  query_str = "select count(*) as num, group_concat(distinct tests.name), substr(exception_trace, 1, nthoccurrence(exception_trace, \"\\n\", 8) + 1) as top_of_trace
   from test_results, tests
   where tests.test_id = test_results.test_id
   and exception_trace != ''
@@ -144,7 +144,7 @@ def most_frequent_exception_traces(time_clause)
   formatted_res = ""
   formatted_res +=  SEPERATOR
   formatted_res += "\nMost frequent exception traces\n"
-  header = "  |  #{"Occurences".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Tests".ljust(JUST)}|\n"
+  header = "  |  #{"Occurrences".ljust(JUST)}#{TABLE_SEPERATOR}|  #{"Tests".ljust(JUST)}|\n"
   formatted_res += header
   table_line = "  " + "-"*(header.length-3) + "\n"
   formatted_res += table_line
@@ -226,13 +226,13 @@ end
 def greatest_avg_test_execution_time(time_clause)
   query_str = "select avg(test_results.elapsed_time) as num, suites.name, test_groups.name, tests.name
   from test_results, tests, test_groups, suites
-  where tests.test_id = test_results.test_id  
+  where tests.test_id = test_results.test_id
   and suites.test_group_id = test_groups.test_group_id
   and test_groups.test_id = tests.test_id
   %s
   and test_results.elapsed_time != (select max(tr_inner.elapsed_time) from test_results tr_inner where test_results.test_id = tr_inner.test_id group by tr_inner.test_id)
-  group by test_results.test_id 
-  order by num DESC 
+  group by test_results.test_id
+  order by num DESC
   limit 10;"
   res = @db.execute(query_str % time_clause)
   formatted_res = ""
